@@ -1,0 +1,33 @@
+# Garmin Connect IQ / Monkey C build artifacts
+bin/
+
+# IDE and editor files
+.vscode/launch.json
+*.code-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.directory
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Device-specific build files
+*.prg
+*.prg.debug.xml
