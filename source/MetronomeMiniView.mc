@@ -9,17 +9,21 @@ import Toybox.System;
 class MetronomeMiniView extends WatchUi.View {
 
     private var _isRunning as Boolean = false;
+    private var _wasRunning as Boolean = false;
     private var _timer as Timer.Timer?;
     private var _beatTimer as Timer.Timer?;
     private var _showBeat as Boolean = false;
+    private var _isDownbeat as Boolean = false;
     private var _bpm as Number = 60;
+    private var _beatsPerBar as Number = 1;
+    private var _currentBeat as Number = 0;
     private var _screenHeight as Number = 0;
     private var _screenWidth as Number = 0;
     private var _soundEnabled as Boolean = true;
     private var _vibrationEnabled as Boolean = true;
-    
-    private const MIN_BPM = 40;
-    private const MAX_BPM = 208;
+
+    private const MIN_BPM = 30;
+    private const MAX_BPM = 250;
     private const BPM_STEP = 2;
 
     function initialize() {
@@ -59,9 +63,10 @@ class MetronomeMiniView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
-        // Beat flash - ring around edge
+        // Beat flash - ring around edge (white on downbeat, gray on regular beat)
         if (_showBeat && _isRunning) {
-            dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
+            var flashColor = _isDownbeat ? Graphics.COLOR_WHITE : 0x888888;
+            dc.setColor(flashColor, Graphics.COLOR_TRANSPARENT);
             var penWidth = (_screenWidth * 4) / 100;
             if (penWidth < 4) { penWidth = 4; }
             dc.setPenWidth(penWidth);
@@ -92,8 +97,16 @@ class MetronomeMiniView extends WatchUi.View {
         // "BPM" label
         var labelY = centerY + (_screenHeight * 8) / 100;
         dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, labelY, Graphics.FONT_TINY, "BPM", 
+        dc.drawText(centerX, labelY, Graphics.FONT_TINY, "BPM",
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // Beats per bar indicator — only shown when a time signature is active
+        if (_beatsPerBar > 1) {
+            var bpbY = (_screenHeight * 10) / 100;
+            dc.setColor(0x666666, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(centerX, bpbY, Graphics.FONT_TINY, _beatsPerBar.toString() + " BPB",
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
 
         // Start/Stop button at bottom
         var buttonY = _screenHeight - (_screenHeight * 18) / 100;
@@ -127,6 +140,22 @@ class MetronomeMiniView extends WatchUi.View {
             startMetronome();
         }
         WatchUi.requestUpdate();
+    }
+
+    function pauseForSettings() as Void {
+        _wasRunning = _isRunning;
+        if (_isRunning) {
+            stopMetronome();
+            WatchUi.requestUpdate();
+        }
+    }
+
+    function resumeFromSettings() as Void {
+        if (_wasRunning) {
+            startMetronome();
+            WatchUi.requestUpdate();
+        }
+        _wasRunning = false;
     }
 
     function increaseBpm() as Void {
@@ -177,6 +206,8 @@ class MetronomeMiniView extends WatchUi.View {
 
     private function stopMetronome() as Void {
         _isRunning = false;
+        _currentBeat = 0;
+        _isDownbeat = false;
         if (_timer != null) {
             _timer.stop();
             _timer = null;
@@ -206,7 +237,9 @@ class MetronomeMiniView extends WatchUi.View {
     }
 
     private function triggerBeat() as Void {
-        doVibrate();
+        _isDownbeat = (_beatsPerBar > 1) && (_currentBeat == 0);
+        _currentBeat = (_currentBeat + 1) % _beatsPerBar;
+        doVibrate(_isDownbeat);
         _showBeat = true;
         WatchUi.requestUpdate();
         
@@ -223,14 +256,21 @@ class MetronomeMiniView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    private function doVibrate() as Void {
+    private function doVibrate(isDownbeat as Boolean) as Void {
         if (_vibrationEnabled && Attention has :vibrate) {
-            var vibeData = [new Attention.VibeProfile(50, 50)];
+            var vibeData;
+            if (isDownbeat) {
+                vibeData = [new Attention.VibeProfile(100, 80)];
+            } else {
+                vibeData = [new Attention.VibeProfile(50, 50)];
+            }
             Attention.vibrate(vibeData);
         }
         if (_soundEnabled) {
             if (Attention has :ToneProfile) {
-                var toneProfile = [new Attention.ToneProfile(2500, 100)];
+                var freq = isDownbeat ? 3200 : 2500;
+                var dur  = isDownbeat ? 120  : 100;
+                var toneProfile = [new Attention.ToneProfile(freq, dur)];
                 Attention.playTone({:toneProfile => toneProfile});
             } else if (Attention has :playTone) {
                 Attention.playTone(Attention.TONE_LOUD_BEEP);
@@ -244,6 +284,17 @@ class MetronomeMiniView extends WatchUi.View {
 
     function isVibrationEnabled() as Boolean {
         return _vibrationEnabled;
+    }
+
+    function getBeatsPerBar() as Number {
+        return _beatsPerBar;
+    }
+
+    function setBeatsPerBar(n as Number) as Void {
+        _beatsPerBar = n;
+        _currentBeat = 0;
+        _isDownbeat = false;
+        saveSettings();
     }
 
     function isSoundSupported() as Boolean {
@@ -275,12 +326,19 @@ class MetronomeMiniView extends WatchUi.View {
         if (vibe != null && vibe instanceof Boolean) {
             _vibrationEnabled = vibe as Boolean;
         }
+        var bpb = Application.Storage.getValue("beatsPerBar");
+        if (bpb != null && bpb instanceof Number) {
+            _beatsPerBar = bpb as Number;
+            if (_beatsPerBar < 1) { _beatsPerBar = 1; }
+            if (_beatsPerBar > 16) { _beatsPerBar = 16; }
+        }
     }
 
     private function saveSettings() as Void {
         Application.Storage.setValue("bpm", _bpm);
         Application.Storage.setValue("sound", _soundEnabled);
         Application.Storage.setValue("vibration", _vibrationEnabled);
+        Application.Storage.setValue("beatsPerBar", _beatsPerBar);
     }
 
 }

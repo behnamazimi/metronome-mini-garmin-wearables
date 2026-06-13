@@ -4,7 +4,7 @@ A simple metronome app for Garmin wearables.
 
 ## Features
 
-- Adjustable BPM (40-208) in steps of 2
+- Adjustable BPM (30-250)
 - Visual beat indicator (ring flash)
 - Sound feedback (on supported devices)
 - Vibration feedback

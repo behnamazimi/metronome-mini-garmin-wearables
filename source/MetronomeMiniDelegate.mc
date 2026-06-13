@@ -1,6 +1,5 @@
 import Toybox.Lang;
 import Toybox.WatchUi;
-import Toybox.System;
 
 class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
 
@@ -31,8 +30,7 @@ class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
         }
         // Tap top-center zone = open settings
         if (y < (screenHeight * 20) / 100) {
-            var menu = new SettingsMenu(_view);
-            WatchUi.pushView(menu, new SettingsMenuDelegate(_view), WatchUi.SLIDE_UP);
+            openSettings();
             return true;
         }
         // Tap center = toggle start/stop
@@ -58,19 +56,24 @@ class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onNextPage() as Boolean {
-        _view.decreaseBpm();
-        return true;
-    }
-
-    function onPreviousPage() as Boolean {
         _view.increaseBpm();
         return true;
     }
 
-    function onMenu() as Boolean {
-        var menu = new SettingsMenu(_view);
-        WatchUi.pushView(menu, new SettingsMenuDelegate(_view), WatchUi.SLIDE_UP);
+    function onPreviousPage() as Boolean {
+        _view.decreaseBpm();
         return true;
+    }
+
+    function onMenu() as Boolean {
+        openSettings();
+        return true;
+    }
+
+    private function openSettings() as Void {
+        _view.pauseForSettings();
+        var menu = new SettingsMenu(_view);
+        WatchUi.pushView(menu, new SettingsMenuDelegate(_view, menu), WatchUi.SLIDE_UP);
     }
 
 }
