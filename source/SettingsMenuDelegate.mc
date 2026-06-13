@@ -3,6 +3,7 @@ import Toybox.WatchUi;
 
 class SettingsMenu extends WatchUi.Menu2 {
 
+    private var _soundItem as WatchUi.MenuItem;
     private var _beatsPerBarItem as WatchUi.MenuItem;
     private var _vibeStrengthItem as WatchUi.MenuItem;
     private var _vibePulseItem as WatchUi.MenuItem;
@@ -11,13 +12,16 @@ class SettingsMenu extends WatchUi.Menu2 {
         Menu2.initialize({:title => "Settings"});
 
         if (view.isSoundSupported()) {
-            addItem(new WatchUi.ToggleMenuItem(
+            _soundItem = new WatchUi.MenuItem(
                 "Sound",
-                {:enabled => "On", :disabled => "Off"},
+                view.getSoundModeName(),
                 :sound,
-                view.isSoundEnabled(),
                 {}
-            ));
+            );
+            addItem(_soundItem);
+        } else {
+            // Placeholder so the field is always initialised; item is not added to the menu
+            _soundItem = new WatchUi.MenuItem("Sound", "Off", :sound, {});
         }
 
         addItem(new WatchUi.ToggleMenuItem(
@@ -57,6 +61,10 @@ class SettingsMenu extends WatchUi.Menu2 {
         return _beatsPerBarItem;
     }
 
+    function getSoundItem() as WatchUi.MenuItem {
+        return _soundItem;
+    }
+
     function getVibeStrengthItem() as WatchUi.MenuItem {
         return _vibeStrengthItem;
     }
@@ -80,7 +88,10 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :sound) {
-            _view.toggleSound();
+            var opts = new OptionMenu("Sound",
+                ["Off", "Beep", "Click", "Block"], [0, 1, 2, 3],
+                _view.getSoundMode());
+            WatchUi.pushView(opts, new OptionMenuDelegate(_view, _menu, :soundMode), WatchUi.SLIDE_LEFT);
         } else if (id == :vibration) {
             _view.toggleVibration();
         } else if (id == :vibeStrength) {
@@ -110,10 +121,15 @@ class OptionMenu extends WatchUi.Menu2 {
 
     function initialize(title as String, labels as Array, values as Array, currentValue as Number) {
         Menu2.initialize({:title => title});
+        var selectedIndex = 0;
         for (var i = 0; i < labels.size(); i++) {
             var subLabel = (values[i] == currentValue) ? "✓" : null;
             addItem(new WatchUi.MenuItem(labels[i] as String, subLabel, values[i] as Number, {}));
+            if (values[i] == currentValue) {
+                selectedIndex = i;
+            }
         }
+        setFocus(selectedIndex);
     }
 }
 
@@ -132,7 +148,10 @@ class OptionMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var value = item.getId() as Number;
-        if (_key == :vibeStrength) {
+        if (_key == :soundMode) {
+            _view.setSoundMode(value);
+            _settingsMenu.getSoundItem().setSubLabel(_view.getSoundModeName());
+        } else if (_key == :vibeStrength) {
             _view.setVibeStrength(value);
             _settingsMenu.getVibeStrengthItem().setSubLabel(value.toString() + "%");
         } else if (_key == :vibePulse) {
@@ -155,6 +174,7 @@ class BeatsPerBarMenu extends WatchUi.Menu2 {
             var subLabel = (i == currentValue) ? "✓" : null;
             addItem(new WatchUi.MenuItem(i.toString(), subLabel, i, {}));
         }
+        setFocus(currentValue - 1);
     }
 }
 

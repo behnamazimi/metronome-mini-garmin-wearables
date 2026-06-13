@@ -19,7 +19,7 @@ class MetronomeMiniView extends WatchUi.View {
     private var _currentBeat as Number = 0;
     private var _screenHeight as Number = 0;
     private var _screenWidth as Number = 0;
-    private var _soundEnabled as Boolean = true;
+    private var _soundMode as Number = 1;
     private var _vibrationEnabled as Boolean = true;
     private var _vibeStrength as Number = 75;
     private var _vibePulse as Number = 50;
@@ -93,7 +93,13 @@ class MetronomeMiniView extends WatchUi.View {
         // BPM value - large, prominent, centered vertically
         var bpmY = centerY - (_screenHeight * 10) / 100;
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, bpmY, Graphics.FONT_NUMBER_HOT, _bpm.toString(), 
+        dc.drawText(centerX, bpmY, Graphics.FONT_NUMBER_HOT, _bpm.toString(),
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // Tempo label above BPM number
+        var tempoY = bpmY - (_screenHeight * 16) / 100;
+        dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(centerX, tempoY, Graphics.FONT_XTINY, getTempoLabel(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // "BPM" label
@@ -200,6 +206,20 @@ class MetronomeMiniView extends WatchUi.View {
         return (_screenWidth * 22) / 100;
     }
 
+    private function getTempoLabel() as String {
+        if (_bpm < 40)  { return "Grave"; }
+        if (_bpm < 60)  { return "Largo"; }
+        if (_bpm < 66)  { return "Larghetto"; }
+        if (_bpm < 76)  { return "Adagio"; }
+        if (_bpm < 90)  { return "Andante"; }
+        if (_bpm < 105) { return "Moderato"; }
+        if (_bpm < 115) { return "Allegretto"; }
+        if (_bpm < 130) { return "Allegro"; }
+        if (_bpm < 168) { return "Vivace"; }
+        if (_bpm < 200) { return "Presto"; }
+        return "Prestissimo";
+    }
+
     private function startMetronome() as Void {
         _isRunning = true;
         startTimer();
@@ -260,16 +280,33 @@ class MetronomeMiniView extends WatchUi.View {
 
     private function doVibrate(isDownbeat as Boolean) as Void {
         if (_vibrationEnabled && Attention has :vibrate) {
-            // Downbeat always fires at full strength so it stays distinct at any strength setting
             var strength = isDownbeat ? 100 : _vibeStrength;
-            Attention.vibrate([new Attention.VibeProfile(strength, _vibePulse)]);
+            var pulse    = isDownbeat ? _vibePulse + 50 : _vibePulse;
+            Attention.vibrate([new Attention.VibeProfile(strength, pulse)]);
         }
-        if (_soundEnabled) {
+        if (_soundMode > 0) {
             if (Attention has :ToneProfile) {
-                var freq = isDownbeat ? 3200 : 2500;
-                var dur  = isDownbeat ? 120  : 100;
-                var toneProfile = [new Attention.ToneProfile(freq, dur)];
-                Attention.playTone({:toneProfile => toneProfile});
+                if (_soundMode == 1) {
+                    // Beep — regular is a moderate high tone; downbeat is higher but not sharp
+                    var freq = isDownbeat ? 3000 : 2200;
+                    var dur  = isDownbeat ? 170  : 70;
+                    Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
+                } else if (_soundMode == 2) {
+                    // Click — regular is a short low pop; downbeat is higher and clearly longer
+                    var freq = isDownbeat ? 1200 : 700;
+                    var dur  = isDownbeat ? 60   : 25;
+                    Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
+                } else {
+                    // Wood — sharp impact burst + hollow resonance, like two sticks hitting
+                    var impactFreq = isDownbeat ? 1600 : 1300;
+                    var impactDur  = isDownbeat ? 15   : 10;
+                    var bodyFreq   = isDownbeat ? 600  : 500;
+                    var bodyDur    = isDownbeat ? 65   : 40;
+                    Attention.playTone({:toneProfile => [
+                        new Attention.ToneProfile(impactFreq, impactDur),
+                        new Attention.ToneProfile(bodyFreq,   bodyDur)
+                    ]});
+                }
             } else if (Attention has :playTone) {
                 Attention.playTone(Attention.TONE_LOUD_BEEP);
             }
@@ -277,7 +314,23 @@ class MetronomeMiniView extends WatchUi.View {
     }
 
     function isSoundEnabled() as Boolean {
-        return _soundEnabled;
+        return _soundMode > 0;
+    }
+
+    function getSoundMode() as Number {
+        return _soundMode;
+    }
+
+    function getSoundModeName() as String {
+        if (_soundMode == 0) { return "Off"; }
+        if (_soundMode == 2) { return "Click"; }
+        if (_soundMode == 3) { return "Block"; }
+        return "Beep";
+    }
+
+    function setSoundMode(n as Number) as Void {
+        _soundMode = n;
+        saveSettings();
     }
 
     function isVibrationEnabled() as Boolean {
@@ -297,11 +350,6 @@ class MetronomeMiniView extends WatchUi.View {
 
     function isSoundSupported() as Boolean {
         return Attention has :playTone;
-    }
-
-    function toggleSound() as Void {
-        _soundEnabled = !_soundEnabled;
-        saveSettings();
     }
 
     function toggleVibration() as Void {
@@ -334,9 +382,9 @@ class MetronomeMiniView extends WatchUi.View {
             if (_bpm < MIN_BPM) { _bpm = MIN_BPM; }
             if (_bpm > MAX_BPM) { _bpm = MAX_BPM; }
         }
-        var sound = Application.Storage.getValue("sound");
-        if (sound != null && sound instanceof Boolean) {
-            _soundEnabled = sound as Boolean;
+        var sound = Application.Storage.getValue("soundMode");
+        if (sound != null && sound instanceof Number) {
+            _soundMode = sound as Number;
         }
         var vibe = Application.Storage.getValue("vibration");
         if (vibe != null && vibe instanceof Boolean) {
@@ -360,7 +408,7 @@ class MetronomeMiniView extends WatchUi.View {
 
     private function saveSettings() as Void {
         Application.Storage.setValue("bpm", _bpm);
-        Application.Storage.setValue("sound", _soundEnabled);
+        Application.Storage.setValue("soundMode", _soundMode);
         Application.Storage.setValue("vibration", _vibrationEnabled);
         Application.Storage.setValue("beatsPerBar", _beatsPerBar);
         Application.Storage.setValue("vibeStrength", _vibeStrength);
