@@ -14,9 +14,11 @@ class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
     function onTap(clickEvent as WatchUi.ClickEvent) as Boolean {
         var coords = clickEvent.getCoordinates();
         var x = coords[0];
+        var y = coords[1];
         var screenWidth = _view.getScreenWidth();
+        var screenHeight = _view.getScreenHeight();
         var tapZone = _view.getTapZoneWidth();
-        
+
         // Tap left zone = decrease BPM
         if (x < tapZone) {
             _view.decreaseBpm();
@@ -25,6 +27,12 @@ class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
         // Tap right zone = increase BPM
         if (x > screenWidth - tapZone) {
             _view.increaseBpm();
+            return true;
+        }
+        // Tap top-center zone = open settings
+        if (y < (screenHeight * 20) / 100) {
+            var menu = new SettingsMenu(_view);
+            WatchUi.pushView(menu, new SettingsMenuDelegate(_view), WatchUi.SLIDE_UP);
             return true;
         }
         // Tap center = toggle start/stop
