@@ -21,6 +21,8 @@ class MetronomeMiniView extends WatchUi.View {
     private var _screenWidth as Number = 0;
     private var _soundEnabled as Boolean = true;
     private var _vibrationEnabled as Boolean = true;
+    private var _vibeStrength as Number = 75;
+    private var _vibePulse as Number = 50;
 
     private const MIN_BPM = 30;
     private const MAX_BPM = 250;
@@ -258,13 +260,9 @@ class MetronomeMiniView extends WatchUi.View {
 
     private function doVibrate(isDownbeat as Boolean) as Void {
         if (_vibrationEnabled && Attention has :vibrate) {
-            var vibeData;
-            if (isDownbeat) {
-                vibeData = [new Attention.VibeProfile(100, 80)];
-            } else {
-                vibeData = [new Attention.VibeProfile(50, 50)];
-            }
-            Attention.vibrate(vibeData);
+            // Downbeat always fires at full strength so it stays distinct at any strength setting
+            var strength = isDownbeat ? 100 : _vibeStrength;
+            Attention.vibrate([new Attention.VibeProfile(strength, _vibePulse)]);
         }
         if (_soundEnabled) {
             if (Attention has :ToneProfile) {
@@ -311,6 +309,24 @@ class MetronomeMiniView extends WatchUi.View {
         saveSettings();
     }
 
+    function getVibeStrength() as Number {
+        return _vibeStrength;
+    }
+
+    function setVibeStrength(n as Number) as Void {
+        _vibeStrength = n;
+        saveSettings();
+    }
+
+    function getVibePulse() as Number {
+        return _vibePulse;
+    }
+
+    function setVibePulse(n as Number) as Void {
+        _vibePulse = n;
+        saveSettings();
+    }
+
     private function loadSettings() as Void {
         var stored = Application.Storage.getValue("bpm");
         if (stored != null && stored instanceof Number) {
@@ -332,6 +348,14 @@ class MetronomeMiniView extends WatchUi.View {
             if (_beatsPerBar < 1) { _beatsPerBar = 1; }
             if (_beatsPerBar > 16) { _beatsPerBar = 16; }
         }
+        var vs = Application.Storage.getValue("vibeStrength");
+        if (vs != null && vs instanceof Number) {
+            _vibeStrength = vs as Number;
+        }
+        var vp = Application.Storage.getValue("vibePulse");
+        if (vp != null && vp instanceof Number) {
+            _vibePulse = vp as Number;
+        }
     }
 
     private function saveSettings() as Void {
@@ -339,6 +363,8 @@ class MetronomeMiniView extends WatchUi.View {
         Application.Storage.setValue("sound", _soundEnabled);
         Application.Storage.setValue("vibration", _vibrationEnabled);
         Application.Storage.setValue("beatsPerBar", _beatsPerBar);
+        Application.Storage.setValue("vibeStrength", _vibeStrength);
+        Application.Storage.setValue("vibePulse", _vibePulse);
     }
 
 }
