@@ -3,7 +3,7 @@ SDK=~/Library/Application\ Support/Garmin/ConnectIQ/Sdks/connectiq-sdk-mac-8.2.3
 
 # Device to use for the simulator
 # See https://developer.garmin.com/connect-iq/sdk-guides/supported-devices/ for supported devices
-DEVICE=vivoactive4
+DEVICE=${1:-vivoactive4}
 
 # Kill any lingering monkeydo from a previous run
 pkill -f "monkeydo.*MetronomeMini" 2>/dev/null
