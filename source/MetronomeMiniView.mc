@@ -287,25 +287,41 @@ class MetronomeMiniView extends WatchUi.View {
         if (_soundMode > 0) {
             if (Attention has :ToneProfile) {
                 if (_soundMode == 1) {
-                    // Beep — regular is a moderate high tone; downbeat is higher but not sharp
+                    // High Beep — moderate high tone; downbeat is higher but not sharp
                     var freq = isDownbeat ? 3000 : 2200;
                     var dur  = isDownbeat ? 170  : 70;
                     Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
+                } else if (_soundMode == 4) {
+                    // Low Beep — lower-pitched tone; downbeat lifts slightly for accent
+                    var freq = isDownbeat ? 1200 : 800;
+                    var dur  = isDownbeat ? 170  : 70;
+                    Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
                 } else if (_soundMode == 2) {
-                    // Click — regular is a short low pop; downbeat is higher and clearly longer
-                    var freq = isDownbeat ? 1200 : 700;
-                    var dur  = isDownbeat ? 60   : 25;
+                    // Click — sharp high tick (clave/UI click); no sustain
+                    var freq = isDownbeat ? 3800 : 3400;
+                    var dur  = isDownbeat ? 20   : 12;
                     Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
                 } else {
-                    // Wood — sharp impact burst + hollow resonance, like two sticks hitting
-                    var impactFreq = isDownbeat ? 1600 : 1300;
-                    var impactDur  = isDownbeat ? 15   : 10;
-                    var bodyFreq   = isDownbeat ? 600  : 500;
-                    var bodyDur    = isDownbeat ? 65   : 40;
-                    Attention.playTone({:toneProfile => [
-                        new Attention.ToneProfile(impactFreq, impactDur),
-                        new Attention.ToneProfile(bodyFreq,   bodyDur)
-                    ]});
+                    // Block — "wood"/mallet knock. The beeper is a piezo (~4 kHz
+                    // resonance) that can't reproduce low woody fundamentals, so a
+                    // real wood tone is impossible. Instead we fake the gesture of a
+                    // struck wooden bar with a short dip-and-return pitch shape
+                    // (down then back up). This reads as a rounded percussive "tok" —
+                    // distinct from the flat Beep and the sharp high Click. All tones
+                    // stay in the piezo's reproducible band.
+                    if (isDownbeat) {
+                        Attention.playTone({:toneProfile => [
+                            new Attention.ToneProfile(600, 12),
+                            new Attention.ToneProfile(0, 26),
+                            new Attention.ToneProfile(600, 12),
+                        ]});
+                    } else {
+                        Attention.playTone({:toneProfile => [
+                            new Attention.ToneProfile(300, 12),
+                            new Attention.ToneProfile(0, 26),
+                            new Attention.ToneProfile(300, 12),
+                        ]});
+                    }
                 }
             } else if (Attention has :playTone) {
                 Attention.playTone(Attention.TONE_LOUD_BEEP);
@@ -325,7 +341,8 @@ class MetronomeMiniView extends WatchUi.View {
         if (_soundMode == 0) { return "Off"; }
         if (_soundMode == 2) { return "Click"; }
         if (_soundMode == 3) { return "Block"; }
-        return "Beep";
+        if (_soundMode == 4) { return "Low Beep"; }
+        return "High Beep";
     }
 
     function setSoundMode(n as Number) as Void {

@@ -89,7 +89,7 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         var id = item.getId();
         if (id == :sound) {
             var opts = new OptionMenu("Sound",
-                ["Off", "Beep", "Click", "Block"], [0, 1, 2, 3],
+                ["Off", "High Beep", "Low Beep", "Click", "Block"], [0, 1, 4, 2, 3],
                 _view.getSoundMode());
             WatchUi.pushView(opts, new OptionMenuDelegate(_view, _menu, :soundMode), WatchUi.SLIDE_LEFT);
         } else if (id == :vibration) {
