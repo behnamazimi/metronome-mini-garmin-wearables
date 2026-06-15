@@ -7,6 +7,7 @@ class SettingsMenu extends WatchUi.Menu2 {
     private var _beatsPerBarItem as WatchUi.MenuItem;
     private var _vibeStrengthItem as WatchUi.MenuItem;
     private var _vibePulseItem as WatchUi.MenuItem;
+    private var _timeModeItem as WatchUi.MenuItem;
 
     function initialize(view as MetronomeMiniView) {
         Menu2.initialize({:title => "Settings"});
@@ -55,10 +56,22 @@ class SettingsMenu extends WatchUi.Menu2 {
             {}
         );
         addItem(_beatsPerBarItem);
+
+        _timeModeItem = new WatchUi.MenuItem(
+            "Time Display",
+            view.getTimeModeName(),
+            :timeMode,
+            {}
+        );
+        addItem(_timeModeItem);
     }
 
     function getBeatsPerBarItem() as WatchUi.MenuItem {
         return _beatsPerBarItem;
+    }
+
+    function getTimeModeItem() as WatchUi.MenuItem {
+        return _timeModeItem;
     }
 
     function getSoundItem() as WatchUi.MenuItem {
@@ -107,6 +120,11 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :beatsPerBar) {
             var bpbMenu = new BeatsPerBarMenu(_view.getBeatsPerBar());
             WatchUi.pushView(bpbMenu, new BeatsPerBarMenuDelegate(_view, _menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :timeMode) {
+            var opts = new OptionMenu("Time Display",
+                ["Off", "Clock", "Elapsed"], [0, 1, 2],
+                _view.getTimeMode());
+            WatchUi.pushView(opts, new OptionMenuDelegate(_view, _menu, :timeMode), WatchUi.SLIDE_LEFT);
         }
     }
 
@@ -157,6 +175,9 @@ class OptionMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (_key == :vibePulse) {
             _view.setVibePulse(value);
             _settingsMenu.getVibePulseItem().setSubLabel(value.toString() + "ms");
+        } else if (_key == :timeMode) {
+            _view.setTimeMode(value);
+            _settingsMenu.getTimeModeItem().setSubLabel(_view.getTimeModeName());
         }
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }

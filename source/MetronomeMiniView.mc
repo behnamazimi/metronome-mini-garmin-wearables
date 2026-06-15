@@ -17,12 +17,15 @@ class MetronomeMiniView extends WatchUi.View {
     private var _bpm as Number = 60;
     private var _beatsPerBar as Number = 1;
     private var _currentBeat as Number = 0;
+    private var _displayBeat as Number = 0;
     private var _screenHeight as Number = 0;
     private var _screenWidth as Number = 0;
     private var _soundMode as Number = 1;
     private var _vibrationEnabled as Boolean = true;
     private var _vibeStrength as Number = 75;
     private var _vibePulse as Number = 50;
+    private var _timeMode as Number = 1;       // 0=Off, 1=Current time, 2=Elapsed time
+    private var _metronomeStartTime as Number = 0;
 
     private const MIN_BPM = 30;
     private const MAX_BPM = 250;
@@ -61,6 +64,14 @@ class MetronomeMiniView extends WatchUi.View {
         var iconSize = (_screenWidth * 5) / 100;  // 5% of width
         var playIconSize = (_screenWidth * 4) / 100;  // 4% of width
 
+        // Layout positions — declared early so clockY can reference both labelY and buttonY
+        var bpmY = centerY - (_screenHeight * 10) / 100;
+        var tempoY = bpmY - (_screenHeight * 16) / 100;
+        var labelY = centerY + (_screenHeight * 8) / 100;
+        var buttonY = _screenHeight - (_screenHeight * 15) / 100;
+        var bpbY = (_screenHeight * 10) / 100;
+        var clockY = labelY + (_screenHeight * 11) / 100;
+
         // Background
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
@@ -91,33 +102,58 @@ class MetronomeMiniView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // BPM value - large, prominent, centered vertically
-        var bpmY = centerY - (_screenHeight * 10) / 100;
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(centerX, bpmY, Graphics.FONT_NUMBER_HOT, _bpm.toString(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // Tempo label above BPM number
-        var tempoY = bpmY - (_screenHeight * 16) / 100;
         dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
         dc.drawText(centerX, tempoY, Graphics.FONT_XTINY, getTempoLabel(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // "BPM" label
-        var labelY = centerY + (_screenHeight * 8) / 100;
         dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
         dc.drawText(centerX, labelY, Graphics.FONT_TINY, "BPM",
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // Beats per bar indicator — only shown when a time signature is active
-        if (_beatsPerBar > 1) {
-            var bpbY = (_screenHeight * 10) / 100;
+        // Time display — controlled by timeMode setting (0=off, 1=clock, 2=elapsed)
+        if (_timeMode > 0) {
+            var timeStr;
+            if (_timeMode == 1) {
+                var clockInfo = System.getClockTime();
+                var minStr = clockInfo.min < 10 ? "0" + clockInfo.min.toString() : clockInfo.min.toString();
+                timeStr = clockInfo.hour.toString() + ":" + minStr;
+            } else {
+                if (_isRunning) {
+                    var elapsedMs = System.getTimer() - _metronomeStartTime;
+                    var totalSecs = (elapsedMs / 1000).toNumber();
+                    var mins = totalSecs / 60;
+                    var secs = totalSecs % 60;
+                    var secsStr = secs < 10 ? "0" + secs.toString() : secs.toString();
+                    timeStr = mins.toString() + ":" + secsStr;
+                } else {
+                    timeStr = "0:00";
+                }
+            }
             dc.setColor(0x666666, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(centerX, bpbY, Graphics.FONT_TINY, _beatsPerBar.toString() + " BPB",
+            dc.drawText(centerX, clockY, Graphics.FONT_XTINY, timeStr,
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
+
+        // Beat counter / beats-per-bar indicator — only shown when a time signature is active
+        if (_beatsPerBar > 1) {
+            dc.setColor(0x666666, Graphics.COLOR_TRANSPARENT);
+            var bpbText;
+            if (_isRunning && _displayBeat > 0) {
+                bpbText = _displayBeat.toString() + " / " + _beatsPerBar.toString();
+            } else {
+                bpbText = _beatsPerBar.toString() + " BPB";
+            }
+            dc.drawText(centerX, bpbY, Graphics.FONT_TINY, bpbText,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
         // Start/Stop button at bottom
-        var buttonY = _screenHeight - (_screenHeight * 18) / 100;
         
         if (_isRunning) {
             dc.setColor(0xCC0000, Graphics.COLOR_TRANSPARENT);
@@ -222,6 +258,7 @@ class MetronomeMiniView extends WatchUi.View {
 
     private function startMetronome() as Void {
         _isRunning = true;
+        _metronomeStartTime = System.getTimer();
         startTimer();
         triggerBeat();
     }
@@ -229,6 +266,7 @@ class MetronomeMiniView extends WatchUi.View {
     private function stopMetronome() as Void {
         _isRunning = false;
         _currentBeat = 0;
+        _displayBeat = 0;
         _isDownbeat = false;
         if (_timer != null) {
             _timer.stop();
@@ -260,6 +298,7 @@ class MetronomeMiniView extends WatchUi.View {
 
     private function triggerBeat() as Void {
         _isDownbeat = (_beatsPerBar > 1) && (_currentBeat == 0);
+        _displayBeat = _currentBeat + 1;
         _currentBeat = (_currentBeat + 1) % _beatsPerBar;
         doVibrate(_isDownbeat);
         _showBeat = true;
@@ -392,6 +431,21 @@ class MetronomeMiniView extends WatchUi.View {
         saveSettings();
     }
 
+    function getTimeMode() as Number {
+        return _timeMode;
+    }
+
+    function getTimeModeName() as String {
+        if (_timeMode == 0) { return "Off"; }
+        if (_timeMode == 2) { return "Elapsed"; }
+        return "Clock";
+    }
+
+    function setTimeMode(n as Number) as Void {
+        _timeMode = n;
+        saveSettings();
+    }
+
     private function loadSettings() as Void {
         var stored = Application.Storage.getValue("bpm");
         if (stored != null && stored instanceof Number) {
@@ -421,6 +475,10 @@ class MetronomeMiniView extends WatchUi.View {
         if (vp != null && vp instanceof Number) {
             _vibePulse = vp as Number;
         }
+        var tm = Application.Storage.getValue("timeMode");
+        if (tm != null && tm instanceof Number) {
+            _timeMode = tm as Number;
+        }
     }
 
     private function saveSettings() as Void {
@@ -430,6 +488,7 @@ class MetronomeMiniView extends WatchUi.View {
         Application.Storage.setValue("beatsPerBar", _beatsPerBar);
         Application.Storage.setValue("vibeStrength", _vibeStrength);
         Application.Storage.setValue("vibePulse", _vibePulse);
+        Application.Storage.setValue("timeMode", _timeMode);
     }
 
 }
