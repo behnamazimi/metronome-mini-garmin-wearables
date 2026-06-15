@@ -77,14 +77,14 @@ class MetronomeMiniView extends WatchUi.View {
         }
 
         // Draw - button zone on LEFT
-        dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0x161616, Graphics.COLOR_TRANSPARENT);
         dc.fillCircle(0, centerY, buttonZoneRadius);
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
         dc.drawText(sideZoneWidth / 2 + 4, centerY, Graphics.FONT_NUMBER_MILD, "-", 
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // Draw + button zone on RIGHT
-        dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0x161616, Graphics.COLOR_TRANSPARENT);
         dc.fillCircle(_screenWidth, centerY, buttonZoneRadius);
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
         dc.drawText(_screenWidth - (sideZoneWidth / 2) - 4, centerY, Graphics.FONT_NUMBER_MILD, "+", 
