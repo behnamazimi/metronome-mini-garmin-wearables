@@ -45,11 +45,11 @@ class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         if (key == WatchUi.KEY_UP) {
-            _view.decreaseBpm();
+            _view.increaseBpm();
             return true;
         }
         if (key == WatchUi.KEY_DOWN) {
-            _view.increaseBpm();
+            _view.decreaseBpm();
             return true;
         }
         return false;
