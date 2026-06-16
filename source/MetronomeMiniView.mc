@@ -64,13 +64,12 @@ class MetronomeMiniView extends WatchUi.View {
         var iconSize = (_screenWidth * 5) / 100;  // 5% of width
         var playIconSize = (_screenWidth * 4) / 100;  // 4% of width
 
-        // Layout positions — declared early so clockY can reference both labelY and buttonY
-        var bpmY = centerY - (_screenHeight * 10) / 100;
+        // Layout positions
+        var bpmY = centerY - (_screenHeight * 5) / 100;
         var tempoY = bpmY - (_screenHeight * 16) / 100;
-        var labelY = centerY + (_screenHeight * 8) / 100;
+        var labelY = centerY + (_screenHeight * 12) / 100;
         var buttonY = _screenHeight - (_screenHeight * 15) / 100;
         var bpbY = (_screenHeight * 10) / 100;
-        var clockY = labelY + (_screenHeight * 11) / 100;
 
         // Background
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
@@ -111,34 +110,29 @@ class MetronomeMiniView extends WatchUi.View {
         dc.drawText(centerX, tempoY, Graphics.FONT_XTINY, getTempoLabel(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // "BPM" label
-        dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, labelY, Graphics.FONT_TINY, "BPM",
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        // Time display — controlled by timeMode setting (0=off, 1=clock, 2=elapsed)
-        if (_timeMode > 0) {
-            var timeStr;
-            if (_timeMode == 1) {
-                var clockInfo = System.getClockTime();
-                var minStr = clockInfo.min < 10 ? "0" + clockInfo.min.toString() : clockInfo.min.toString();
-                timeStr = clockInfo.hour.toString() + ":" + minStr;
+        // Sub-label: time display when active, otherwise "BPM"
+        var subLabel;
+        if (_timeMode == 1) {
+            var clockInfo = System.getClockTime();
+            var minStr = clockInfo.min < 10 ? "0" + clockInfo.min.toString() : clockInfo.min.toString();
+            subLabel = clockInfo.hour.toString() + ":" + minStr;
+        } else if (_timeMode == 2) {
+            if (_isRunning) {
+                var elapsedMs = System.getTimer() - _metronomeStartTime;
+                var totalSecs = (elapsedMs / 1000).toNumber();
+                var mins = totalSecs / 60;
+                var secs = totalSecs % 60;
+                var secsStr = secs < 10 ? "0" + secs.toString() : secs.toString();
+                subLabel = mins.toString() + ":" + secsStr;
             } else {
-                if (_isRunning) {
-                    var elapsedMs = System.getTimer() - _metronomeStartTime;
-                    var totalSecs = (elapsedMs / 1000).toNumber();
-                    var mins = totalSecs / 60;
-                    var secs = totalSecs % 60;
-                    var secsStr = secs < 10 ? "0" + secs.toString() : secs.toString();
-                    timeStr = mins.toString() + ":" + secsStr;
-                } else {
-                    timeStr = "0:00";
-                }
+                subLabel = "0:00";
             }
-            dc.setColor(0x666666, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(centerX, clockY, Graphics.FONT_XTINY, timeStr,
-                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        } else {
+            subLabel = "BPM";
         }
+        dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(centerX, labelY, Graphics.FONT_TINY, subLabel,
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // Beat counter / beats-per-bar indicator — only shown when a time signature is active
         if (_beatsPerBar > 1) {
