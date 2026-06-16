@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" width="30" height="27">
+  <g fill="#AAAAAA">
+    <!-- beam joining the two stems -->
+    <rect x="14" y="6" width="24.6" height="5"/>
+    <!-- left stem -->
+    <rect x="14" y="6" width="2.6" height="25"/>
+    <!-- right stem -->
+    <rect x="36" y="6" width="2.6" height="25"/>
+    <!-- left note head -->
+    <ellipse cx="9" cy="31" rx="6" ry="4.2"/>
+    <!-- right note head -->
+    <ellipse cx="31" cy="31" rx="6" ry="4.2"/>
+  </g>
+</svg>

@@ -4,26 +4,26 @@ import Toybox.WatchUi;
 
 class MetronomeMiniApp extends Application.AppBase {
 
+    private var _view as MetronomeMiniView?;
+
     function initialize() {
         AppBase.initialize();
     }
 
-    // onStart() is called on application start up
     function onStart(state as Dictionary?) as Void {
     }
 
-    // onStop() is called when your application is exiting
+    // Stop the engine on exit so no timer/vibration/tone leaks out of the app.
     function onStop(state as Dictionary?) as Void {
+        if (_view != null) {
+            _view.onAppStop();
+        }
     }
 
-    // Return the initial view of your application here
     function getInitialView() as [Views] or [Views, InputDelegates] {
         var view = new MetronomeMiniView();
+        _view = view;
         return [ view, new MetronomeMiniDelegate(view) ];
     }
 
-}
-
-function getApp() as MetronomeMiniApp {
-    return Application.getApp() as MetronomeMiniApp;
 }
