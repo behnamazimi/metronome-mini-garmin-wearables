@@ -26,6 +26,7 @@ class MetronomeMiniView extends WatchUi.View {
     private var _vibePulse as Number = 50;
     private var _timeMode as Number = 1;       // 0=Off, 1=Current time, 2=Elapsed time
     private var _metronomeStartTime as Number = 0;
+    private var _hasTouchScreen as Boolean = false;
 
     private const MIN_BPM = 30;
     private const MAX_BPM = 250;
@@ -41,6 +42,7 @@ class MetronomeMiniView extends WatchUi.View {
         var settings = System.getDeviceSettings();
         _screenWidth = settings.screenWidth;
         _screenHeight = settings.screenHeight;
+        _hasTouchScreen = settings.isTouchScreen;
     }
 
     function onLayout(dc as Dc) as Void {
@@ -86,19 +88,20 @@ class MetronomeMiniView extends WatchUi.View {
             dc.setPenWidth(1);
         }
 
-        // Draw - button zone on LEFT
-        dc.setColor(0x161616, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(0, centerY, buttonZoneRadius);
-        dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(sideZoneWidth / 2 + 4, centerY, Graphics.FONT_NUMBER_MILD, "-", 
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        // Draw - and + button zones only on touch-capable devices
+        if (_hasTouchScreen) {
+            dc.setColor(0x161616, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(0, centerY, buttonZoneRadius);
+            dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(sideZoneWidth / 2 + 4, centerY, Graphics.FONT_NUMBER_MILD, "-", 
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // Draw + button zone on RIGHT
-        dc.setColor(0x161616, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(_screenWidth, centerY, buttonZoneRadius);
-        dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(_screenWidth - (sideZoneWidth / 2) - 4, centerY, Graphics.FONT_NUMBER_MILD, "+", 
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            dc.setColor(0x161616, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(_screenWidth, centerY, buttonZoneRadius);
+            dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(_screenWidth - (sideZoneWidth / 2) - 4, centerY, Graphics.FONT_NUMBER_MILD, "+", 
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
 
         // BPM value - large, prominent, centered vertically
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
