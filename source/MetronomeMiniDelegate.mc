@@ -44,24 +44,17 @@ class MetronomeMiniDelegate extends WatchUi.BehaviorDelegate {
             _view.toggleMetronome();
             return true;
         }
-        if (key == WatchUi.KEY_UP) {
-            _view.increaseBpm();
-            return true;
-        }
-        if (key == WatchUi.KEY_DOWN) {
-            _view.decreaseBpm();
-            return true;
-        }
         return false;
     }
 
+    // UP button → onPreviousPage, DOWN button → onNextPage (BehaviorDelegate routing)
     function onNextPage() as Boolean {
-        _view.increaseBpm();
+        _view.decreaseBpm();
         return true;
     }
 
     function onPreviousPage() as Boolean {
-        _view.decreaseBpm();
+        _view.increaseBpm();
         return true;
     }
 
