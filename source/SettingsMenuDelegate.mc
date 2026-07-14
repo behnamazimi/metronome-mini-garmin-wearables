@@ -12,7 +12,7 @@ class SettingsMenu extends WatchUi.Menu2 {
     function initialize(view as MetronomeMiniView) {
         Menu2.initialize({:title => "Settings"});
 
-        if (view.isSoundSupported()) {
+        if (view.hasSoundModeOptions()) {
             _soundItem = new WatchUi.MenuItem(
                 "Sound",
                 view.getSoundModeName(),
@@ -20,6 +20,15 @@ class SettingsMenu extends WatchUi.Menu2 {
                 {}
             );
             addItem(_soundItem);
+        } else if (view.isSoundSupported() && view.usesSpeakerTones()) {
+            _soundItem = new WatchUi.MenuItem("Sound", "Off", :sound, {});
+            addItem(new WatchUi.ToggleMenuItem(
+                "Sound",
+                {:enabled => "On", :disabled => "Off"},
+                :soundToggle,
+                view.isSoundEnabled(),
+                {}
+            ));
         } else {
             // Placeholder so the field is always initialised; item is not added to the menu
             _soundItem = new WatchUi.MenuItem("Sound", "Off", :sound, {});
@@ -105,6 +114,8 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
                 ["Off", "High Beep", "Low Beep", "Click", "Block"], [0, 1, 4, 2, 3],
                 _view.getSoundMode());
             WatchUi.pushView(opts, new OptionMenuDelegate(_view, _menu, :soundMode), WatchUi.SLIDE_LEFT);
+        } else if (id == :soundToggle) {
+            _view.toggleSound();
         } else if (id == :vibration) {
             _view.toggleVibration();
         } else if (id == :vibeStrength) {

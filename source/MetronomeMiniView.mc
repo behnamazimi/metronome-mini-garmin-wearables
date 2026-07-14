@@ -27,6 +27,7 @@ class MetronomeMiniView extends WatchUi.View {
     private var _timeMode as Number = 1;       // 0=Off, 1=Current time, 2=Elapsed time
     private var _metronomeStartTime as Number = 0;
     private var _hasTouchScreen as Boolean = false;
+    private var _usesSpeakerTones as Boolean? = null;
 
     private const MIN_BPM = 30;
     private const MAX_BPM = 250;
@@ -315,52 +316,132 @@ class MetronomeMiniView extends WatchUi.View {
     }
 
     private function doVibrate(isDownbeat as Boolean) as Void {
-        if (_vibrationEnabled && Attention has :vibrate) {
-            var strength = isDownbeat ? 100 : _vibeStrength;
-            var pulse    = isDownbeat ? _vibePulse + 50 : _vibePulse;
-            Attention.vibrate([new Attention.VibeProfile(strength, pulse)]);
+        playBeatVibration(isDownbeat);
+        playBeatSound(isDownbeat);
+    }
+
+    private function playBeatVibration(isDownbeat as Boolean) as Void {
+        if (!_vibrationEnabled || !(Attention has :vibrate)) {
+            return;
         }
-        if (_soundMode > 0) {
-            if (Attention has :ToneProfile) {
-                if (_soundMode == 1) {
-                    // High Beep — moderate high tone; downbeat is higher but not sharp
-                    var freq = isDownbeat ? 3000 : 2200;
-                    var dur  = isDownbeat ? 170  : 70;
-                    Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
-                } else if (_soundMode == 4) {
-                    // Low Beep — lower-pitched tone; downbeat lifts slightly for accent
-                    var freq = isDownbeat ? 1200 : 800;
-                    var dur  = isDownbeat ? 170  : 70;
-                    Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
-                } else if (_soundMode == 2) {
-                    // Click — sharp high tick (clave/UI click); no sustain
-                    var freq = isDownbeat ? 3800 : 3400;
-                    var dur  = isDownbeat ? 20   : 12;
-                    Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
-                } else {
-                    // Block — "wood"/mallet knock. The beeper is a piezo (~4 kHz
-                    // resonance) that can't reproduce low woody fundamentals, so a
-                    // real wood tone is impossible. Instead we fake the gesture of a
-                    // struck wooden bar with a short dip-and-return pitch shape
-                    // (down then back up). This reads as a rounded percussive "tok" —
-                    // distinct from the flat Beep and the sharp high Click. All tones
-                    // stay in the piezo's reproducible band.
-                    if (isDownbeat) {
-                        Attention.playTone({:toneProfile => [
-                            new Attention.ToneProfile(600, 12),
-                            new Attention.ToneProfile(0, 26),
-                            new Attention.ToneProfile(600, 12),
-                        ]});
-                    } else {
-                        Attention.playTone({:toneProfile => [
-                            new Attention.ToneProfile(300, 12),
-                            new Attention.ToneProfile(0, 26),
-                            new Attention.ToneProfile(300, 12),
-                        ]});
-                    }
-                }
-            } else if (Attention has :playTone) {
-                Attention.playTone(Attention.TONE_LOUD_BEEP);
+        var deviceSettings = System.getDeviceSettings();
+        if (deviceSettings has :vibrateOn && !deviceSettings.vibrateOn) {
+            return;
+        }
+        var strength = isDownbeat ? 100 : _vibeStrength;
+        var pulse    = isDownbeat ? _vibePulse + 50 : _vibePulse;
+        Attention.vibrate([new Attention.VibeProfile(strength, pulse)]);
+    }
+
+    private function playBeatSound(isDownbeat as Boolean) as Void {
+        if (!isSoundEnabled() || !(Attention has :playTone)) {
+            return;
+        }
+        var deviceSettings = System.getDeviceSettings();
+        if (deviceSettings has :tonesOn && !deviceSettings.tonesOn) {
+            return;
+        }
+        if (usesSpeakerTones()) {
+            playPredefinedBeatSound();
+        } else if (Attention has :ToneProfile) {
+            playCustomBeatSound(isDownbeat);
+        } else {
+            Attention.playTone(Attention.TONE_LOUD_BEEP);
+        }
+    }
+
+    // Speaker-based watches (Venu 3, Fenix 8, etc.) report ToneProfile support but
+    // only play Garmin's predefined tones — custom profiles fail silently on device.
+    function usesSpeakerTones() as Boolean {
+        if (_usesSpeakerTones != null) {
+            return _usesSpeakerTones as Boolean;
+        }
+        _usesSpeakerTones = isSpeakerHardwarePart(getHardwarePartNumber());
+        return _usesSpeakerTones as Boolean;
+    }
+
+    function hasSoundModeOptions() as Boolean {
+        return isSoundSupported() && !usesSpeakerTones();
+    }
+
+    private function getHardwarePartNumber() as String {
+        var deviceSettings = System.getDeviceSettings();
+        if (!(deviceSettings has :partNumber)) {
+            return "";
+        }
+        var partNumber = deviceSettings.partNumber;
+        var firstDash = partNumber.find("-");
+        if (firstDash == null) {
+            return partNumber;
+        }
+        var remainder = partNumber.substring(firstDash + 1, partNumber.length());
+        var secondDash = remainder.find("-");
+        if (secondDash == null) {
+            return remainder;
+        }
+        return remainder.substring(0, secondDash);
+    }
+
+    private function isSpeakerHardwarePart(hardwarePart as String) as Boolean {
+        var speakerParts = [
+            "B3851", "B4017", // Venu 2 Plus
+            "B4260", "B4261", // Venu 3 / 3S
+            "B4643", "B4644", // Venu 4
+            "B4603",          // Venu X1
+            "B4532", "B4533", "B4534", "B4536", "B4631", // fēnix 8
+            "B3943", "B3944", "B4312", "B4313", "B4314", // epix Gen 2 / Pro
+            "B4426",          // vívoactive 5
+            "B4315", "B4565", // Forerunner 965 / 970
+            "B4586", "B4587", "B4678", // Instinct 3 AMOLED / Crossover AMOLED
+        ];
+        for (var i = 0; i < speakerParts.size(); i++) {
+            if (hardwarePart.equals(speakerParts[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function playPredefinedBeatSound() as Void {
+        Attention.playTone(Attention.TONE_LOUD_BEEP);
+    }
+
+    private function playCustomBeatSound(isDownbeat as Boolean) as Void {
+        if (_soundMode == 1) {
+            // High Beep — moderate high tone; downbeat is higher but not sharp
+            var freq = isDownbeat ? 3000 : 2200;
+            var dur  = isDownbeat ? 170  : 70;
+            Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
+        } else if (_soundMode == 4) {
+            // Low Beep — lower-pitched tone; downbeat lifts slightly for accent
+            var freq = isDownbeat ? 1200 : 800;
+            var dur  = isDownbeat ? 170  : 70;
+            Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
+        } else if (_soundMode == 2) {
+            // Click — sharp high tick (clave/UI click); no sustain
+            var freq = isDownbeat ? 3800 : 3400;
+            var dur  = isDownbeat ? 20   : 12;
+            Attention.playTone({:toneProfile => [new Attention.ToneProfile(freq, dur)]});
+        } else {
+            // Block — "wood"/mallet knock. The beeper is a piezo (~4 kHz
+            // resonance) that can't reproduce low woody fundamentals, so a
+            // real wood tone is impossible. Instead we fake the gesture of a
+            // struck wooden bar with a short dip-and-return pitch shape
+            // (down then back up). This reads as a rounded percussive "tok" —
+            // distinct from the flat Beep and the sharp high Click. All tones
+            // stay in the piezo's reproducible band.
+            if (isDownbeat) {
+                Attention.playTone({:toneProfile => [
+                    new Attention.ToneProfile(600, 12),
+                    new Attention.ToneProfile(0, 26),
+                    new Attention.ToneProfile(600, 12),
+                ]});
+            } else {
+                Attention.playTone({:toneProfile => [
+                    new Attention.ToneProfile(300, 12),
+                    new Attention.ToneProfile(0, 26),
+                    new Attention.ToneProfile(300, 12),
+                ]});
             }
         }
     }
@@ -382,7 +463,15 @@ class MetronomeMiniView extends WatchUi.View {
     }
 
     function setSoundMode(n as Number) as Void {
+        if (usesSpeakerTones() && n > 0) {
+            n = 1;
+        }
         _soundMode = n;
+        saveSettings();
+    }
+
+    function toggleSound() as Void {
+        _soundMode = _soundMode > 0 ? 0 : 1;
         saveSettings();
     }
 
@@ -453,6 +542,9 @@ class MetronomeMiniView extends WatchUi.View {
         var sound = Application.Storage.getValue("soundMode");
         if (sound != null && sound instanceof Number) {
             _soundMode = sound as Number;
+            if (usesSpeakerTones() && _soundMode > 0) {
+                _soundMode = 1;
+            }
         }
         var vibe = Application.Storage.getValue("vibration");
         if (vibe != null && vibe instanceof Boolean) {
