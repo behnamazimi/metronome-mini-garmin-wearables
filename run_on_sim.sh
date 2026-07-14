@@ -1,5 +1,6 @@
 #!/bin/sh
-SDK=~/Library/Application\ Support/Garmin/ConnectIQ/Sdks/connectiq-sdk-mac-8.2.3-2025-08-11-cac5b3b21
+# Use the SDK selected in Connect IQ SDK Manager (requires API 5.2.0+ for venu3)
+SDK=$(cat ~/Library/Application\ Support/Garmin/ConnectIQ/current-sdk.cfg | tr -d '\n')
 
 # Device to use for the simulator
 # See https://developer.garmin.com/connect-iq/sdk-guides/supported-devices/ for supported devices
